@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -36,6 +38,15 @@ func main() {
 			fmt.Println("Backup failed:", err)
 		} else {
 			fmt.Println("Backup and upload to MinIO successful.")
+			
+			s3KeyPrefix := strings.TrimSuffix(os.Getenv("S3_KEY_PREFIX"), "/")
+			var prefix string
+			if s3KeyPrefix != "" {
+				prefix = s3KeyPrefix + "/"
+			}
+			if err := GlobalMinio.CleanOldBackups(ctx, 10, prefix); err != nil {
+				fmt.Println("Failed to clean old backups:", err)
+			}
 		}
 		cancel()
 		<-ticker.C

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -81,6 +82,31 @@ func (m *MinioStorage) DeleteFile(ctx context.Context, objectName string) error 
 	err := m.Client.RemoveObject(ctx, m.BucketName, objectName, minio.RemoveObjectOptions{})
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (m *MinioStorage) CleanOldBackups(ctx context.Context, retentionDays int, prefix string) error {
+	opts := minio.ListObjectsOptions{
+		Prefix:    prefix,
+		Recursive: true,
+	}
+
+	cutoffDate := time.Now().AddDate(0, 0, -retentionDays)
+
+	for object := range m.Client.ListObjects(ctx, m.BucketName, opts) {
+		if object.Err != nil {
+			fmt.Println("Error listing object:", object.Err)
+			continue
+		}
+
+		if object.LastModified.Before(cutoffDate) {
+			fmt.Printf("Deleting old backup: %s (Last modified: %s)\n", object.Key, object.LastModified)
+			err := m.DeleteFile(ctx, object.Key)
+			if err != nil {
+				fmt.Println("Failed to delete object:", err)
+			}
+		}
 	}
 	return nil
 }

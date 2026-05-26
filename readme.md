@@ -9,7 +9,8 @@ Aplikasi akan:
 1. Membaca konfigurasi dari file `.env`
 2. Menjalankan `pg_dump`
 3. Upload hasil dump ke object storage (S3/MinIO)
-4. Mengulang proses tiap 12 jam
+4. Membersihkan (menghapus) file backup lama yang sudah berusia lebih dari 10 hari
+5. Mengulang proses tiap 12 jam
 
 ## 1) Prasyarat
 
@@ -200,5 +201,4 @@ nssm start SqlBackupService
 ## 8) Rekomendasi Operasional
 
 - Simpan `.env` dengan permission ketat (jangan expose secret).
-- Aktifkan lifecycle policy bucket untuk retensi backup.
 - Uji restore database secara berkala untuk validasi backup.
