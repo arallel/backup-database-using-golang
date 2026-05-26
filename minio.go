@@ -87,26 +87,40 @@ func (m *MinioStorage) DeleteFile(ctx context.Context, objectName string) error 
 }
 
 func (m *MinioStorage) CleanOldBackups(ctx context.Context, retentionDays int, prefix string) error {
+	fmt.Printf("--- START CLEANUP ---\n")
+	fmt.Printf("Scanning Bucket: '%s', Prefix: '%s'\n", m.BucketName, prefix)
+
 	opts := minio.ListObjectsOptions{
 		Prefix:    prefix,
 		Recursive: true,
 	}
 
 	cutoffDate := time.Now().AddDate(0, 0, -retentionDays)
+	fmt.Printf("Cutoff Date (older than this will be deleted): %s\n", cutoffDate.Format(time.RFC3339))
+
+	count := 0
+	deleted := 0
 
 	for object := range m.Client.ListObjects(ctx, m.BucketName, opts) {
+		count++
 		if object.Err != nil {
 			fmt.Println("Error listing object:", object.Err)
 			continue
 		}
 
+		fmt.Printf("Found object: %s (Last Modified: %s)\n", object.Key, object.LastModified.Format(time.RFC3339))
+
 		if object.LastModified.Before(cutoffDate) {
-			fmt.Printf("Deleting old backup: %s (Last modified: %s)\n", object.Key, object.LastModified)
+			fmt.Printf("-> Deleting old backup: %s\n", object.Key)
 			err := m.DeleteFile(ctx, object.Key)
 			if err != nil {
-				fmt.Println("Failed to delete object:", err)
+				fmt.Println("   Failed to delete object:", err)
+			} else {
+				deleted++
 			}
 		}
 	}
+
+	fmt.Printf("--- END CLEANUP (Total scanned: %d, Deleted: %d) ---\n", count, deleted)
 	return nil
 }
